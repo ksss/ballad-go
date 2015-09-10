@@ -59,12 +59,12 @@ func main() {
 				case <-deadPool:
 					break L
 				case urlStr := <-in2pool:
-					res, err := fetch(urlStr)
-					defer res.Body.Close()
-					if res == nil || err != nil {
-						fmt.Fprintf(os.Stderr, "request failed: %s", urlStr)
-						atomic.AddInt32(&inCount, -1)
-						continue
+					res, _ := fetch(urlStr)
+					if res == nil {
+						// request failed
+					} else {
+						// request failed
+						defer res.Body.Close()
 					}
 					pool2result <- &responseSet{
 						res:    res,
@@ -107,9 +107,9 @@ func main() {
 			}
 
 			for {
-				res := <-pool2result
-				if res.urlStr == input {
-					fmt.Fprintf(os.Stdout, "%d\t%s\n", res.res.StatusCode, res.urlStr)
+				set := <-pool2result
+				if set.urlStr == input {
+					fmt.Fprintf(os.Stdout, "%s\t%s\n", edit(set.res), set.urlStr)
 					atomic.AddInt32(&outCount, 1)
 					if eof && inCount == outCount {
 						// broadcast
@@ -119,7 +119,7 @@ func main() {
 					}
 					break
 				} else {
-					stock = append(stock, res)
+					stock = append(stock, set)
 				}
 			}
 		}
@@ -160,6 +160,9 @@ func fetch(urlStr string) (*http.Response, error) {
 }
 
 func edit(res *http.Response) string {
+	if res == nil {
+		return "???"
+	}
 	// TODO Implement other style
 	return strconv.Itoa(res.StatusCode)
 }
