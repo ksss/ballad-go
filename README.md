@@ -30,5 +30,6 @@ https://www.google.co.jp/
 $ git clone https://github.com/ksss/ballad-go
 $ cd ballad-go
 $ go build -o ballad
-$ go install
+$ chmod +x ballad
+$ mv ballad $GOPATH/bin
 ```
