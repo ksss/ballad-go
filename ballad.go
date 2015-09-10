@@ -1,4 +1,4 @@
-package main
+package ballad
 
 import (
 	"bufio"
@@ -36,11 +36,12 @@ type responseSet struct {
 	urlStr string
 }
 
+// Run command for ballad
 // goroutine design
 // | input | -> | pool | -> |        | -> print
 //     +                    | result |
 //     +------------------> |        |
-func main() {
+func Run() {
 	flag.Parse()
 	in2pool := make(chan string, *concurrent)
 	in2result := make(chan string, *concurrent)
