@@ -1,4 +1,4 @@
-package ballad
+package main
 
 import (
 	"bufio"
@@ -41,7 +41,7 @@ type responseSet struct {
 // | input | -> | pool | -> |        | -> print
 //     +                    | result |
 //     +------------------> |        |
-func Run() {
+func main() {
 	flag.Parse()
 	in2pool := make(chan string, *concurrent)
 	in2result := make(chan string, *concurrent)
