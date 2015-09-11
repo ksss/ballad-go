@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -36,103 +36,35 @@ type responseSet struct {
 	urlStr string
 }
 
-// Run command for ballad
-// goroutine design
-// | input | -> | pool | -> |        | -> print
-//     +                    | result |
-//     +------------------> |        |
 func main() {
 	flag.Parse()
-	in2pool := make(chan string, *concurrent)
-	in2result := make(chan string, *concurrent)
-	pool2result := make(chan *responseSet)
-	deadPool := make(chan bool)
-	quit := make(chan bool)
-	var inCount int32
-	var outCount int32
+
+	var stock []*responseSet
+	var m sync.Mutex
+	enq := make(chan string, *concurrent)
+	printq := make(chan string, *concurrent)
+	stockq := make(chan bool, *concurrent)
+	waitingq := make(chan bool, *concurrent)
+	quitq := make(chan bool)
 	eof := false
-
-	for i := 0; i < *concurrent; i++ {
-		go func() {
-		L:
-			for {
-				select {
-				case <-deadPool:
-					break L
-				case urlStr := <-in2pool:
-					res, _ := fetch(urlStr)
-					if res == nil {
-						// request failed
-					} else {
-						// request failed
-						defer res.Body.Close()
-					}
-					pool2result <- &responseSet{
-						res:    res,
-						urlStr: urlStr,
-					}
-				}
-			}
-		}()
-	}
-
-	go func() {
-		var stock []*responseSet
-	L:
-		for {
-			input := <-in2result
-			found := false
-			for i, set := range stock {
-				if set.urlStr == input {
-					found = true
-					fmt.Fprintf(os.Stdout, "%s\t%s\n", edit(set.res), set.urlStr)
-					atomic.AddInt32(&outCount, 1)
-					stock = append(stock[:i], stock[i+1:]...)
-					if eof && inCount == outCount {
-						// broadcast
-						close(deadPool)
-						quit <- true
-						break L
-					}
-				}
-			}
-
-			if found {
-				continue
-			}
-			if eof && inCount == outCount {
-				// broadcast
-				close(deadPool)
-				quit <- true
-				break L
-			}
-
-			for {
-				set := <-pool2result
-				if set.urlStr == input {
-					fmt.Fprintf(os.Stdout, "%s\t%s\n", edit(set.res), set.urlStr)
-					atomic.AddInt32(&outCount, 1)
-					if eof && inCount == outCount {
-						// broadcast
-						close(deadPool)
-						quit <- true
-						break L
-					}
-					break
-				} else {
-					stock = append(stock, set)
-				}
-			}
-		}
-	}()
 
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
-			atomic.AddInt32(&inCount, 1)
 			urlStr := strings.TrimRight(scanner.Text(), "\n")
-			in2pool <- urlStr
-			in2result <- urlStr
+			printq <- urlStr
+
+			enq <- urlStr
+			go func() {
+				urlStr := <-enq
+				waitingq <- true
+				res, _ := fetch(urlStr)
+				m.Lock()
+				stock = append(stock, &responseSet{res: res, urlStr: urlStr})
+				m.Unlock()
+				<-waitingq
+				stockq <- true
+			}()
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintln(os.Stderr, "reading standard input:", err)
@@ -140,7 +72,29 @@ func main() {
 		eof = true
 	}()
 
-	<-quit
+	go func() {
+		for {
+			urlStr := <-printq
+		L:
+			for {
+				for i, set := range stock {
+					if set.urlStr == urlStr {
+						fmt.Fprintf(os.Stdout, "%s\t%s\n", edit(set.res), set.urlStr)
+						m.Lock()
+						stock = append(stock[:i], stock[i+1:]...)
+						m.Unlock()
+						if eof && len(waitingq) == 0 && len(stock) == 0 {
+							quitq <- true
+						}
+						break L
+					}
+				}
+				<-stockq
+			}
+		}
+	}()
+
+	<-quitq
 }
 
 func fetch(urlStr string) (*http.Response, error) {
