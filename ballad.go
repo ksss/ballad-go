@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,7 +25,18 @@ var (
 	errRedirectNotFollowed = errors.New("redirection not followed")
 )
 
+var customTransport http.RoundTripper = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	Dial: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).Dial,
+	TLSHandshakeTimeout: 10 * time.Second,
+	MaxIdleConnsPerHost: 3 * http.DefaultMaxIdleConnsPerHost,
+}
+
 var httpClient = &http.Client{
+	Transport: customTransport,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		return errRedirectNotFollowed
 	},
