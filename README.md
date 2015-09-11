@@ -4,7 +4,7 @@ HTTP edit line tool.
 
 Ballad send HTTP request to url input by stdin.
 
-And edit input line and output to stdout by HTTP response.
+And edit input line and output to stdout with HTTP response.
 
 ## Usage
 
@@ -30,6 +30,5 @@ https://www.google.co.jp/
 $ git clone https://github.com/ksss/ballad-go
 $ cd ballad-go
 $ go build -o ballad
-$ chmod +x ballad
 $ mv ballad $GOPATH/bin
 ```
