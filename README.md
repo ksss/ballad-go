@@ -32,3 +32,7 @@ $ cd ballad-go
 $ go build -o ballad
 $ mv ballad $GOPATH/bin
 ```
+
+## License
+
+MIT
