@@ -53,7 +53,6 @@ func main() {
 
 	var stock []*responseSet
 	var m sync.Mutex
-	enq := make(chan string, *concurrent)
 	printq := make(chan string, *concurrent)
 	stockq := make(chan bool, *concurrent)
 	waitingq := make(chan bool, *concurrent)
@@ -66,9 +65,7 @@ func main() {
 			urlStr := strings.TrimRight(scanner.Text(), "\n")
 			printq <- urlStr
 
-			enq <- urlStr
 			go func() {
-				urlStr := <-enq
 				waitingq <- true
 				res, _ := fetch(urlStr)
 				m.Lock()
