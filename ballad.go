@@ -68,10 +68,10 @@ func main() {
 			go func() {
 				waitingq <- true
 				res, _ := fetch(urlStr)
+				<-waitingq
 				m.Lock()
 				stock = append(stock, &responseSet{res: res, urlStr: urlStr})
 				m.Unlock()
-				<-waitingq
 				stockq <- true
 			}()
 		}
