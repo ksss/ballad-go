@@ -69,8 +69,12 @@ func main() {
 				waitingq <- true
 				res, _ := fetch(urlStr)
 				<-waitingq
+				set := &responseSet{
+					res:    res,
+					urlStr: urlStr,
+				}
 				m.Lock()
-				stock = append(stock, &responseSet{res: res, urlStr: urlStr})
+				stock = append(stock, set)
 				m.Unlock()
 				stockq <- true
 			}()
