@@ -19,6 +19,7 @@ import (
 var (
 	concurrent = flag.Int("j", runtime.NumCPU(), "number of concurrent")
 	timeout    = flag.Int64("timeout", 10, "timeout second for HTTP request")
+	httpMethod = flag.String("method", "HEAD", "HTTP method for request")
 )
 
 var (
@@ -111,7 +112,12 @@ func main() {
 }
 
 func fetch(urlStr string) (*http.Response, error) {
-	res, err := httpClient.Head(urlStr)
+	req, err := http.NewRequest(*httpMethod, urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := httpClient.Do(req)
 	if err != nil {
 		ue, ok := err.(*url.Error)
 		if ok {
